@@ -117,7 +117,7 @@ HTML;
                 $return .= <<<HTML
     <form id="submissionForm" method="post" style="text-align: center; margin: 0 auto; width: 100%; ">
         <div >
-            <input type='radio' id="radio_normal" name="submission_type" checked="true"> 
+            <input type='radio' id="radio_normal" name="submission_type" checked="true">
                 Normal Submission
             <input type='radio' id="radio_student" name="submission_type">
                 Make Submission for a Student
@@ -335,7 +335,7 @@ HTML;
                         break;
                     }
                 }
-                if ($student_page) {                
+                if ($student_page) {
                     $return .= <<<HTML
     <form id="pdfPageStudent">
         <div class="sub">
@@ -357,8 +357,8 @@ HTML;
                 $return .= <<<HTML
     <div>
         {$upload_message}
-    <br>
-    &nbsp;
+	<br>
+	&nbsp;
     </div>
 
     <button type="button" id="submit" class="btn btn-success" style="margin-right: 100px;">Submit</button>
@@ -573,16 +573,14 @@ HTML;
                         // get the full filename for PDF popout
                         // add "timestamp / full filename" to count_array so that path to each filename is to the full PDF, not the cover
                         $url = $this->core->getConfig()->getSiteUrl()."&component=misc&page=display_file&dir=uploads&file=".$filename."&path=".$path."&ta_grading=false";
-                        $filename_full = str_replace("_cover.pdf", ".pdf", rawurldecode( $filename) );
+                        $filename_full = str_replace("_cover.pdf", ".pdf", $filename);
                         $path_full = str_replace("_cover.pdf", ".pdf", $path);
                         $url_full = $this->core->getConfig()->getSiteUrl()."&component=misc&page=display_file&dir=uploads&file=".$filename_full."&path=".$path_full."&ta_grading=false";
-                        $count_array[$count] = FileUtils::joinPaths($timestamp, rawurlencode( $filename_full) );
-                        //decode the filename after to display correctly for users
-                        $filename_full = rawurldecode($filename_full);
+                        $count_array[$count] = FileUtils::joinPaths($timestamp, $filename_full);
                         $return .= <<<HTML
             <tr class="tr tr-vertically-centered">
                 <td>{$count}</td>
-                <td>{$clean_timestamp}</td> 
+                <td>{$clean_timestamp}</td>
                 <td>
                     {$filename_full}</br>
                     <object data="{$url}" type="application/pdf" width="100%" height="300">
@@ -672,7 +670,8 @@ HTML;
             }
         }
         $team_header = '';
-        if ($gradeable->isTeamAssignment() && $gradeable->getTeam() !== null) {
+        if ($gradeable->isTeamAssignment()) {
+            if ($gradeable->getTeam() != null)
             $team_header = <<<HTML
     <h3>Team: {$gradeable->getTeam()->getMemberList()}</h3><br />
 HTML;
@@ -757,7 +756,7 @@ HTML;
 HTML;
             }
             else {
-                if($gradeable->getActiveVersion() > 0
+	            if($gradeable->getActiveVersion() > 0
                     && $gradeable->getActiveVersion() === $current_version->getVersion()) {
                     $return .= <<<HTML
     <div class="sub" id="submission_message">
@@ -768,8 +767,8 @@ HTML;
 HTML;
                 }
                 else {
-                    if($gradeable->getActiveVersion() > 0) {
-                        $return .= <<<HTML
+		            if($gradeable->getActiveVersion() > 0) {
+		                $return .= <<<HTML
    <div class="sub" id="submission_message">
        <p class="red-message">
             Note: This version of your assignment will not be graded the instructor/TAs. <br />
@@ -782,19 +781,19 @@ HTML;
             Note: You have selected to NOT GRADE THIS ASSIGNMENT.<br />
             This assignment will not be graded by the instructor/TAs and a zero will be recorded in the gradebook.<br />
 HTML;
-                    }
+		            }
 
-                        $return .= <<<HTML
+		                $return .= <<<HTML
             Click the button "Grade This Version" if you would like to specify that this version of your homework should be graded.
          </p>
      </div>
 HTML;
-                }
+	            }
 
                 if ($gradeable->hasIncentiveMessage()) {
                     $return .= <<<HTML
     <div class="sub" id="incentive_message" style="display: none;">
-        <p class='green-message'>{$gradeable->getIncentiveMessage()}</p>    
+        <p class='green-message'>{$gradeable->getIncentiveMessage()}</p>
     </div>
 HTML;
                 }
@@ -838,6 +837,21 @@ HTML;
                         $return .= "<br />";
                     }
                 }
+                //dowload zip of all files
+                $return .= <<<HTML
+            <script type="text/javascript">
+                function downloadZip(file, path) {
+                    window.location = buildUrl({'component': 'misc', 'page': 'download_zip', 'dir': 'submissions', 'file': file, 'path': path});
+                }
+            </script>
+HTML;
+                      $filename = $file['relative_name'];
+                      $filepath = $file['path'];
+                      $return .= <<< HTML
+          <a onclick="downloadZip('$filename','$filepath')"><i class="fa fa-download" aria-hidden="true" title="Download Zip"></i></a>
+          <br />
+HTML;
+
                 $return .= <<<HTML
         </div>
         <div class="box half">
@@ -970,7 +984,7 @@ HTML;
             $return .= <<<HTML
 </div>
 HTML;
-    }
+	}
         if ($gradeable->taGradesReleased()) {
             $return .= <<<HTML
 <div class="content">
