@@ -28,12 +28,28 @@ class ForumThreadView extends AbstractView {
 		
 		//Body Style is necessary to make sure that the forum is still readable...
 		$return = <<<HTML
-		<style>body {min-width: 925px;}</style>
+
+		<link rel="stylesheet" href="{$this->core->getConfig()->getBaseUrl()}css/iframe/codemirror.css" />
+    <link rel="stylesheet" href="{$this->core->getConfig()->getBaseUrl()}css/iframe/eclipse.css" />
+    <script type="text/javascript" language="javascript" src="{$this->core->getConfig()->getBaseUrl()}js/iframe/jquery-2.0.3.min.map.js"></script>
+    <script type="text/javascript" language="javascript" src="{$this->core->getConfig()->getBaseUrl()}js/iframe/codemirror.js"></script>
+    <script type="text/javascript" language="javascript" src="{$this->core->getConfig()->getBaseUrl()}js/iframe/clike.js"></script>
+    <script type="text/javascript" language="javascript" src="{$this->core->getConfig()->getBaseUrl()}js/iframe/python.js"></script>
+    <script type="text/javascript" language="javascript" src="{$this->core->getConfig()->getBaseUrl()}js/iframe/shell.js"></script>
+		<style>body {min-width: 925px;} pre { font-family: inherit; }</style>
+
+
 
 		<script>
 		function openFile(directory, file, path ){
 			window.open("{$this->core->getConfig()->getSiteUrl()}&component=misc&page=display_file&dir=" + directory + "&file=" + file + "&path=" + path,"_blank","toolbar=no,scrollbars=yes,resizable=yes, width=700, height=600");
 		}
+
+			$( document ).ready(function() {
+			    enableTabsInTextArea('post_content');
+			    saveScrollLocationOnRefresh('thread_list');
+			});
+
 		</script>
 
 HTML;
@@ -122,8 +138,11 @@ HTML;
 						if($this->core->getQueries()->viewedThread($current_user, $thread["id"])){
 							$class .= " viewed";
 						}
-						$contentDisplay = substr($first_post["content"], 0, 80);
-						$titleDisplay = substr($thread["title"], 0, 30);
+						$first_post_content = str_replace("&lbrack;&sol;code&rsqb;", "", str_replace("&lbrack;code&rsqb;", "", strip_tags($first_post["content"])));
+						$sizeOfContent = strlen($first_post_content);
+						$contentDisplay = substr($first_post_content, 0, ($sizeOfContent < 80) ? $sizeOfContent : strpos($first_post_content, " ", 70));
+						$titleLength = strlen($thread['title']);
+						$titleDisplay = substr($thread["title"], 0, ($titleLength < 30) ? $titleLength : strpos($thread['title'], " ", 29));
 						if(strlen($first_post["content"]) > 80){
 							$contentDisplay .= "...";
 						}
@@ -151,7 +170,7 @@ HTML;
 					}
 
 			$thread_id = -1;
-			$function_content = 'nl2br';
+			$userAccessToAnon = ($this->core->getUser()->getGroup() < 4) ? true : false;
 			$title_html = '';
 			$return .= <<< HTML
 					</div>
@@ -214,6 +233,19 @@ HTML;
                             $return .= $title_html;
                         }
 
+                        $codeBracketString = "&lbrack;&sol;code&rsqb;";
+                        if(strpos($post['content'], "&NewLine;&lbrack;&sol;code&rsqb;") !== false){
+                        	$codeBracketString = "&NewLine;" . $codeBracketString;
+                        }
+
+
+                        $post_content = str_replace($codeBracketString, '</textarea>', str_replace('&lbrack;code&rsqb;', '<textarea id="code">', $post["content"]));
+
+                        //This code is for legacy posts that had an extra \r per newline
+                        if(strpos($post['content'], "\r") !== false){
+                        	$post_content = str_replace("\r","", $post_content);
+                        }
+
 						if($this->core->getUser()->getGroup() <= 2){
 							$return .= <<<HTML
 							<a class="post_button" style="position:absolute; display:inline-block; color:red; float:right;" onClick="deletePost( {$post['thread_id']}, {$post['id']}, '{$post['author_user_id']}', '{$function_date($date,'m/d/Y g:i A')}' )" title="Remove post"><i class="fa fa-times" aria-hidden="true"></i></a>
@@ -221,7 +253,7 @@ HTML;
 							} 
 						
 						$return .= <<<HTML
-							<p class="post_content">{$function_content($post["content"])}</p>
+							<pre><p class="post_content" style="white-space: pre-wrap; ">{$post_content}</p></pre>
 							
 							
 							<hr style="margin-bottom:3px;"><span style="margin-top:5px;margin-left:10px;float:right;">
@@ -230,8 +262,9 @@ HTML;
 
 if($this->core->getUser()->getGroup() <= 2){
 						$info_name = $full_name . " (" . $post['author_user_id'] . ")";
+						$jscriptAnonFix = $post['anonymous'] ? 'true' : 'false' ;
 						$return .= <<<HTML
-						<a style=" margin-right:2px;display:inline-block; color:black; " onClick="changeName(this.parentNode, '{$info_name}', '{$visible_username}', {$post['anonymous']}	)" title="Show full user information"><i class="fa fa-eye" aria-hidden="true"></i></a>
+						<a style=" margin-right:2px;display:inline-block; color:black; " onClick="changeName(this.parentNode, '{$info_name}', '{$visible_username}', {$jscriptAnonFix})" title="Show full user information"><i class="fa fa-eye" aria-hidden="true"></i></a>
 HTML;
 }
 			$return .= <<<HTML
@@ -243,11 +276,11 @@ HTML;
 							$post_dir = FileUtils::joinPaths($thread_dir, $post["id"]);
 							$files = FileUtils::getAllFiles($post_dir);
 							foreach($files as $file){
-								$path = urlencode(htmlspecialchars($file['path']));
-								$name = urlencode(htmlspecialchars($file['name']));
-								$name_display = htmlentities($file['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+								$path = rawurlencode(htmlspecialchars($file['path']));
+								$name = rawurlencode(htmlspecialchars('"'.$file['name'].'"'));
+								$name_display = htmlentities(rawurldecode($file['name']), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 								$return .= <<<HTML
-							<a href="#" style="display:inline-block;white-space: nowrap;" class="btn-default btn-sm" onclick="openFile('forum_attachments', '{$name}', '{$path}')" > {$name_display} </a>
+							<a href="#" style="text-decoration:none;display:inline-block;white-space: nowrap;" class="btn-default btn-sm" onclick="openFile('forum_attachments', '{$name}', '{$path}')" > {$name_display} </a>
 HTML;
 
 							}
@@ -264,8 +297,11 @@ HTML;
 					<form style="margin:20px;" method="POST" action="{$this->core->buildUrl(array('component' => 'forum', 'page' => 'publish_post'))}" enctype="multipart/form-data">
 					<input type="hidden" name="thread_id" value="{$thread_id}" />
 	            	<br/>
+	            	<div style="margin-bottom:10px;" class="form-group row">
+            		<button type="button" title="Insert a link" onclick="addBBCode(1, '#post_content')" style="margin-right:10px;" class="btn btn-primary">Link <i class="fa fa-link fa-1x"></i></button><button title="Insert a code segment" type="button" onclick="addBBCode(0, '#post_content')" class="btn btn-primary">Code <i class="fa fa-code fa-1x"></i></button>
+            		</div>
 	            	<div class="form-group row">
-	            		<textarea name="post_content" id="post_content" style="white-space: pre-wrap;resize:none;height:100px;width:100%;" rows="10" cols="30" placeholder="Enter your reply here..." required></textarea>
+	            		<textarea name="post_content" id="post_content" style="white-space: pre-wrap;resize:none;overflow:hidden;min-height:100px;width:100%;" rows="10" cols="30" placeholder="Enter your reply here..." required></textarea>
 	            	</div>
 
 	            	<br/>
@@ -279,7 +315,7 @@ HTML;
 					</span>
 
 	            	<div style="margin-bottom:20px;float:right;" class="form-group row">
-	            		<label style="display:inline-block;" for="Anon">Anonymous?</label> <input type="checkbox" style="margin-right:15px;display:inline-block;" name="Anon" value="Anon" /><input type="submit" style="display:inline-block;" name="post" value="Reply" class="btn btn-primary" />
+	            		<label style="display:inline-block;" for="Anon">Anonymous (to class)?</label> <input type="checkbox" style="margin-right:15px;display:inline-block;" name="Anon" value="Anon" /><input type="submit" style="display:inline-block;" name="post" value="Reply" class="btn btn-primary" />
 	            	</div>
 	            	</form>
 	            	<br/>
@@ -307,6 +343,31 @@ HTML;
 		$_SESSION["post_recover_active"] = null;
 }
 
+	$return .= <<<HTML
+	<script>
+		var codeSegments = document.querySelectorAll("[id=code]");
+		for (let element of codeSegments){
+			var editor0 = CodeMirror.fromTextArea(element, {
+            lineNumbers: true,
+            readOnly: true,
+            cursorHeight: 0.0,
+            lineWrapping: true
+	    });
+
+	    var lineCount = editor0.lineCount();
+	    if (lineCount == 1) {
+	        editor0.setSize("100%", (editor0.defaultTextHeight() * 2) + "px");
+	    }
+	    else {
+	        editor0.setSize("100%", "auto");
+	    }
+	    editor0.setOption("theme", "eclipse");
+	    editor0.refresh(); 
+		}
+			
+	    </script>
+HTML;
+
 		return $return;
 	}
 
@@ -321,6 +382,12 @@ HTML;
 		$this->core->getOutput()->addBreadcrumb("Create Thread", $this->core->buildUrl(array('component' => 'forum', 'page' => 'create_thread')));
 		$return = <<<HTML
 
+		<script> 
+			$( document ).ready(function() {
+			    enableTabsInTextArea('thread_content');
+			});
+		 </script>
+
 		<div style="margin-top:5px;background-color:transparent; margin: !important auto;padding:0px;box-shadow: none;" class="content">
 
 		<div style="margin-top:10px; margin-bottom:10px; height:50px;  " id="forum_bar">
@@ -328,7 +395,7 @@ HTML;
 			</div>
 		</div>
 
-		<div style="padding-left:20px;padding-top:1vh;height:69vh;border-radius:3px;box-shadow: 0 2px 15px -5px #888888;padding-right:20px;background-color: #E9EFEF;" id="forum_wrapper">
+		<div style="padding-left:20px;padding-top:1vh; padding-bottom: 10px;height:69vh;border-radius:3px;box-shadow: 0 2px 15px -5px #888888;padding-right:20px;background-color: #E9EFEF;" id="forum_wrapper">
 
 		<h3> Create Thread </h3>
 
@@ -338,8 +405,11 @@ HTML;
             		Title: <input type="text" size="45" placeholder="Title" name="title" id="title" required/>
             	</div>
             	<br/>
+            	<div style="margin-bottom:10px;" class="form-group row">
+            		<button type="button" title="Insert a link" onclick="addBBCode(1, '#thread_content')" style="margin-right:10px;" class="btn btn-primary">Link <i class="fa fa-link fa-1x"></i></button><button title="Insert a code segment" type="button" onclick="addBBCode(0, '#thread_content')" class="btn btn-primary">Code <i class="fa fa-code fa-1x"></i></button>
+            	</div>
             	<div class="form-group row">
-            		<textarea name="thread_content" id="thread_content" style="white-space: pre-wrap;resize:none;height:50vh;width:100%;" rows="10" cols="30" placeholder="Enter your post here..." required></textarea>
+            		<textarea name="thread_content" id="thread_content" style="resize:none;min-height:40vmin;overflow:hidden;width:100%;" rows="10" cols="30" placeholder="Enter your post here..." required></textarea>
             	</div>
 
             	<br/>
@@ -355,10 +425,10 @@ HTML;
 				</span>
 
 				<span style="display:inline-block;float:right;">
-            	<label for="Anon">Anonymous?</label> <input type="checkbox" style="margin-right:15px;display:inline-block;" name="Anon" value="Anon" />
+            	<label for="Anon">Anonymous (to class)?</label> <input type="checkbox" style="margin-right:15px;display:inline-block;" name="Anon" value="Anon" />
 HTML;
 				
-				if($this->core->getUser()->getGroup() < 4){
+				if($this->core->getUser()->getGroup() <= 2){
 						$return .= <<<HTML
 						<label style="display:inline-block;" for="Announcement">Announcement?</label> <input type="checkbox" style="margin-right:15px;display:inline-block;" name="Announcement" value="Announcement" />
 HTML;

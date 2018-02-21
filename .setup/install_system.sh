@@ -128,7 +128,7 @@ usermod -aG docker hwcron
 pip3 install -U pip
 pip3 install python-pam
 pip3 install PyYAML
-pip3 install psycopg2
+pip3 install psycopg2-binary
 pip3 install sqlalchemy
 pip3 install pylint
 pip3 install psutil
@@ -342,7 +342,6 @@ fi
 # SUBMITTY SETUP
 #################
 
-
 if [ ${VAGRANT} == 1 ]; then
     # This should be set by setup_distro.sh for whatever distro we have, but
     # in case it is not, default to our primary URL
@@ -361,7 +360,6 @@ else
 fi
 
 source ${SUBMITTY_INSTALL_DIR}/.setup/INSTALL_SUBMITTY.sh clean
-
 
 # (re)start the submitty grading scheduler daemon
 systemctl restart submitty_grading_scheduler
@@ -433,9 +431,9 @@ fi
 
 #mkdir -p /tmp/docker
 #cp ${SUBMITTY_REPOSITORY}/.setup/Dockerfile /tmp/docker/Dockerfile
+#pushd /tmp/docker
 #cp -R ${SUBMITTY_INSTALL_DIR}/drmemory ./
 #cp -R ${SUBMITTY_INSTALL_DIR}/SubmittyAnalysisTools ./
-#pushd /tmp/docker
 #docker build -t ubuntu:custom -f Dockerfile .
 #popd
 
